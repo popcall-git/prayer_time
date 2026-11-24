@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wahda · Prayer Times</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:radial-gradient(120% 90% at 20% 0%,#E8E9E2 0%,#DEDCD4 55%,#D3D0C7 100%);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:24px 16px;overflow:hidden;
+  }
+  :root{
+    /* the phone mockup is a fixed 390x844 (+20 border). --fit-s is set by
+       script to a plain number so the whole device always fits the viewport
+       instead of being clipped at the bottom */
+    --fit-s: 1;
+    --bg:#F3F2ED;
+    --card:#FFFFFF;
+    --ink:#101C17;
+    --ink2:#3D4A44;
+    --muted:#7C8A84;
+    --line:#E7E5DE;
+    --green:#0F5C47;
+    --green-d:#0A3E30;
+    --green-soft:#EAF2EE;
+    --gold:#C3A45C;
+  }
+
+  /* ---------- stage ---------- */
+  .stage{display:flex;flex-direction:column;align-items:center;gap:14px;transform-origin:center center}
+
+  /* ---------- phone ---------- */
+  .phone{
+    width:390px;height:844px;background:var(--bg);
+    border:10px solid #0E1013;border-radius:52px;
+    position:relative;overflow:hidden;
+    box-shadow:0 2px 0 rgba(255,255,255,.5) inset,0 30px 70px -20px rgba(20,30,25,.45),0 8px 24px rgba(20,30,25,.18);
+    display:flex;flex-direction:column;
+    zoom: var(--fit-s);
+  }
+
+  .statusbar{height:52px;flex:0 0 52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 7px;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:.01em}
+  .statusbar .icons{display:flex;align-items:center;gap:5px}
+  .statusbar svg{display:block}
+
+  .navbar{height:46px;flex:0 0 46px;display:flex;align-items:center;padding:0 16px;gap:10px}
+  .navbar h1{font-size:17px;font-weight:600;letter-spacing:-.01em;margin:0;color:var(--ink);flex:1;text-align:center;margin-left:-28px}
+  .navbtn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--ink);border-radius:50%;cursor:pointer;transition:.15s}
+  .navbtn:active{background:rgba(0,0,0,.06)}
+
+  .screen{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 16px 14px;scrollbar-width:none}
+  .screen::-webkit-scrollbar{display:none}
+  .screen.locked{overflow:hidden}
+
+  /* ---------- hero ---------- */
+  .hero{
+    background:linear-gradient(150deg,#13614C 0%,#0C4A3A 58%,#083528 100%);
+    border-radius:22px;padding:16px 16px 0;color:#fff;position:relative;overflow:hidden;
+    box-shadow:0 10px 24px -14px rgba(10,62,48,.75);
+  }
+  .hero::after{
+    content:"";position:absolute;width:220px;height:220px;border-radius:50%;
+    right:-90px;top:-110px;background:radial-gradient(circle,rgba(195,164,92,.28),transparent 70%);
+  }
+  .hero-top{display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:1}
+  .loc{display:flex;align-items:center;gap:5px;cursor:pointer;padding:2px 0}
+  .loc b{font-size:15px;font-weight:600;letter-spacing:.01em}
+  .loc svg{opacity:.72;transition:transform .18s ease}
+  .loc.open svg{transform:rotate(180deg)}
+  .hero-wrap{position:relative;z-index:4}
+  .loc-menu{
+    position:absolute;left:9px;top:50px;width:228px;z-index:8;
+    background:#fff;border-radius:15px;padding:5px;
+    box-shadow:0 14px 34px -10px rgba(10,45,35,.34),0 2px 8px rgba(10,45,35,.12);
+    max-height:338px;overflow-y:auto;scrollbar-width:none;padding-bottom:5px;
+    opacity:0;transform:translateY(-7px) scale(.96);transform-origin:top left;
+    pointer-events:none;transition:opacity .17s ease,transform .17s ease;
+    -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 20px),transparent 100%);
+    mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 20px),transparent 100%);
+  }
+  .loc-menu::-webkit-scrollbar{display:none}
+  .loc-menu.on{opacity:1;transform:none;pointer-events:auto}
+  .lmi{display:flex;align-items:center;gap:6px;padding:8px 9px;border-radius:10px;cursor:pointer;transition:background .12s}
+  .lmi:hover{background:#F4F4EF}
+  .lmi .n{flex:1;min-width:0;font-size:13.5px;font-weight:500;color:var(--ink);line-height:1.25;letter-spacing:-.005em}
+  .lmi .n small{display:block;font-size:10.5px;font-weight:400;color:var(--muted);margin-top:1px}
+  .lmi .tick{width:13px;height:13px;color:var(--green);opacity:0;flex:0 0 13px}
+  .lmi.sel .tick{opacity:1}
+  .lmi.sel .n{font-weight:600;color:var(--green-d)}
+  .loc:active{opacity:.7}
+  .dates{text-align:right;line-height:1.45}
+  .dates .hijri{font-size:11px;color:var(--gold);font-weight:600;letter-spacing:.02em}
+  .dates .greg{font-size:11px;color:rgba(255,255,255,.6)}
+  .next{display:flex;align-items:flex-end;justify-content:space-between;padding:12px 0 13px;margin-top:6px;border-top:1px solid rgba(255,255,255,.14);position:relative;z-index:1}
+  .next-l .cap{font-size:10px;font-weight:600;letter-spacing:.12em;color:rgba(255,255,255,.55);text-transform:uppercase;margin-bottom:5px}
+  .next-l .nm{font-size:19px;font-weight:600;letter-spacing:-.01em}
+  .next-l .nm em{font-style:normal;font-size:12px;font-weight:500;color:rgba(255,255,255,.55);margin-left:7px}
+  .next-r{text-align:right}
+  .next-r .tm{font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+  .next-r .left{font-size:11px;color:var(--gold);margin-top:6px;font-weight:600}
+
+  /* ---------- prayer card ---------- */
+  .pcard{margin-top:12px;background:var(--card);border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(16,28,23,.05),0 8px 20px -16px rgba(16,28,23,.3)}
+  .prow{display:flex;align-items:center;gap:11px;padding:0 14px;height:50px;position:relative;border-bottom:1px solid var(--line)}
+  .prow:last-child{border-bottom:0}
+  .prow.is-next{background:var(--green-soft)}
+  .prow.is-next::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green)}
+  .pico{width:22px;height:22px;color:var(--muted);flex:0 0 22px;display:flex;align-items:center;justify-content:center}
+  .prow.is-next .pico{color:var(--green)}
+  .pico svg{width:19px;height:19px}
+  .pname{flex:1;font-size:15px;font-weight:500;color:var(--ink2);letter-spacing:-.005em}
+  .prow.is-next .pname{color:var(--green-d);font-weight:600}
+  .ptime{font-size:17px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em;transition:color .2s}
+  .pdelta{width:48px;text-align:right;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--muted);opacity:.9}
+  .pdelta.up{color:#B4761E}
+  .pdelta.down{color:#2C7A63}
+  .ptime.flash{animation:fl .7s ease}
+  @keyframes fl{0%{color:var(--gold);transform:translateY(-3px)}100%{color:var(--ink);transform:none}}
+
+  .cmp{margin:8px 3px 0;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+  .cmp i{width:4px;height:4px;border-radius:50%;background:var(--gold);display:inline-block}
+
+  /* ---------- groups ---------- */
+  .gtitle{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:13px 0 7px 4px}
+  .group{background:var(--card);border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(16,28,23,.05)}
+  .srow{display:flex;align-items:center;gap:12px;padding:0 14px;min-height:52px;border-bottom:1px solid var(--line);cursor:pointer;position:relative;transition:background .15s}
+  .srow:last-child{border-bottom:0}
+  .srow:active{background:#F6F5F1}
+  .srow .label{flex:1;font-size:15px;color:var(--ink);letter-spacing:-.005em}
+  .srow .label small{display:block;font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:0}
+  .srow .val{font-size:14px;color:var(--muted);font-weight:500;max-width:158px;flex:0 0 auto;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .srow .chev{color:#BFC5C0;flex:0 0 16px;display:flex}
+
+  .foot{margin:11px 6px 0;font-size:10.5px;line-height:1.5;color:var(--muted);text-align:center}
+  .foot b{color:var(--ink2);font-weight:600}
+
+  /* ---------- sheet ---------- */
+  .scrim{position:absolute;inset:0;background:rgba(12,24,19,.34);opacity:0;pointer-events:none;transition:opacity .26s;z-index:20;backdrop-filter:blur(1px)}
+  .scrim.on{opacity:1;pointer-events:auto}
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:21;background:#FBFAF7;
+    border-radius:24px 24px 0 0;transform:translateY(102%);transition:transform .32s cubic-bezier(.32,.72,0,1);
+    max-height:78%;display:flex;flex-direction:column;box-shadow:0 -10px 40px rgba(0,0,0,.16);
+  }
+  .sheet.on{transform:translateY(0)}
+  .sheet .grab{width:36px;height:5px;border-radius:99px;background:#DAD8D1;margin:9px auto 0;flex:0 0 auto}
+  .sheet header{padding:14px 20px 8px;flex:0 0 auto}
+  .sheet header h2{font-size:17px;font-weight:600;margin:0 0 5px;letter-spacing:-.01em;color:var(--ink)}
+  .sheet header p{font-size:12px;color:var(--muted);margin:0;line-height:1.5}
+  .sheet .body{overflow-y:auto;padding:4px 14px 14px;scrollbar-width:none}
+  .sheet .body::-webkit-scrollbar{display:none}
+  .opt{display:flex;align-items:flex-start;gap:12px;padding:13px 12px;border-radius:14px;cursor:pointer;transition:background .15s}
+  .opt:active{background:#F0EFEA}
+  .opt .ot{flex:1;min-width:0}
+  .opt .on{font-size:15px;font-weight:500;color:var(--ink);letter-spacing:-.005em;line-height:1.3}
+  .opt .od{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.45}
+  .opt .ang{display:inline-block;font-size:10.5px;font-weight:600;color:var(--green);background:var(--green-soft);border-radius:5px;padding:2px 6px;margin-right:6px;vertical-align:1px;font-variant-numeric:tabular-nums}
+  .opt .ck{flex:0 0 20px;height:20px;margin-top:1px;color:transparent;transition:.15s}
+  .opt.sel .ck{color:var(--green)}
+  .opt.sel .on{font-weight:600;color:var(--green-d)}
+  .sheet .done{margin:4px 14px 22px;padding:14px;border:0;border-radius:14px;background:var(--green);color:#fff;font:inherit;font-size:15px;font-weight:600;cursor:pointer;flex:0 0 auto;letter-spacing:.01em}
+  .sheet .done:active{background:var(--green-d)}
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:absolute;left:50%;top:104px;transform:translate(-50%,-12px);z-index:15;
+    background:rgba(16,28,23,.9);color:#fff;font-size:12px;font-weight:500;
+    padding:9px 15px;border-radius:99px;opacity:0;pointer-events:none;transition:.3s;
+    backdrop-filter:blur(6px);white-space:nowrap;display:flex;align-items:center;gap:6px;
+  }
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+  .toast svg{width:13px;height:13px}
+
+  .homebar{flex:0 0 auto;height:22px;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+  .homebar i{width:128px;height:4.5px;border-radius:99px;background:#111;opacity:.85;display:block}
+
+  /* ---------- on a real phone: drop the device frame ---------- */
+  @media (max-width:680px){
+    body{padding:0;display:block;background:var(--bg);overflow:auto}
+    .stage{gap:0}
+    .phone{width:100%;height:100vh;height:100dvh;border:0;border-radius:0;zoom:1!important;box-shadow:none}
+    .statusbar{display:none}
+    .navbar{margin-top:10px}
+    .homebar{display:none}
+    .screen{padding-bottom:64px}
+    .sheet{border-radius:22px 22px 0 0}
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="phone">
+    <div class="statusbar">
+      <span id="clock">9:41</span>
+      <span class="icons">
+        <svg width="17" height="11" viewBox="0 0 17 11" fill="none"><rect x="0" y="7" width="3" height="4" rx="1" fill="#101C17"/><rect x="4.5" y="5" width="3" height="6" rx="1" fill="#101C17"/><rect x="9" y="2.5" width="3" height="8.5" rx="1" fill="#101C17"/><rect x="13.5" y="0" width="3" height="11" rx="1" fill="#101C17" opacity=".28"/></svg>
+        <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><path d="M8 9.6 5.1 6.7a4.1 4.1 0 0 1 5.8 0L8 9.6Z" fill="#101C17"/><path d="M3.1 4.7a7 7 0 0 1 9.8 0" stroke="#101C17" stroke-width="1.5" stroke-linecap="round" opacity=".3"/><path d="M.9 2.3a10.1 10.1 0 0 1 14.2 0" stroke="#101C17" stroke-width="1.5" stroke-linecap="round" opacity=".18"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x=".6" y=".6" width="21" height="10.8" rx="3.2" stroke="#101C17" stroke-opacity=".35" stroke-width="1.2"/><rect x="2.2" y="2.2" width="15.4" height="7.6" rx="1.9" fill="#101C17"/><path d="M23.2 4.2v3.6a2 2 0 0 0 0-3.6Z" fill="#101C17" opacity=".4"/></svg>
+      </span>
+    </div>
+
+    <div class="navbar">
+      <div class="navbtn" id="btnBack">
+        <svg width="11" height="18" viewBox="0 0 11 18" fill="none"><path d="M9.5 1.5 2 9l7.5 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h1 id="navTitle">Prayer Times</h1>
+      <div class="navbtn">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="2.9"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 8a1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V2a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V8a1.7 1.7 0 0 0 1.5 1H22a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+      </div>
+    </div>
+
+    <div class="screen" id="screen"></div>
+    <div class="scrim" id="scrim"></div>
+    <div class="sheet" id="sheet"></div>
+    <div class="toast" id="toast"></div>
+    <div class="homebar"><i></i></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   1. data
+   ========================================================= */
+const CITIES=[
+  {id:"karachi",en:"Karachi",zh:"卡拉奇",sub_en:"Pakistan",sub_zh:"巴基斯坦",lat:24.8607,lng:67.0011,tz:"Asia/Karachi"},
+  {id:"delhi",en:"New Delhi",zh:"新德里",sub_en:"India",sub_zh:"印度",lat:28.6139,lng:77.2090,tz:"Asia/Kolkata"},
+  {id:"dhaka",en:"Dhaka",zh:"达卡",sub_en:"Bangladesh",sub_zh:"孟加拉",lat:23.8103,lng:90.4125,tz:"Asia/Dhaka"},
+  {id:"johannesburg",en:"Johannesburg",zh:"约翰内斯堡",sub_en:"South Africa",sub_zh:"南非",lat:-26.2041,lng:28.0473,tz:"Africa/Johannesburg"},
+  {id:"sydney",en:"Sydney",zh:"悉尼",sub_en:"Australia",sub_zh:"澳大利亚",lat:-33.8688,lng:151.2093,tz:"Australia/Sydney"},
+  {id:"london",en:"London",zh:"伦敦",sub_en:"United Kingdom",sub_zh:"英国",lat:51.5074,lng:-0.1278,tz:"Europe/London"},
+  {id:"oslo",en:"Oslo",zh:"奥斯陆",sub_en:"Norway",sub_zh:"挪威",lat:59.9139,lng:10.7522,tz:"Europe/Oslo"},
+  {id:"toronto",en:"Toronto",zh:"多伦多",sub_en:"Canada",sub_zh:"加拿大",lat:43.6532,lng:-79.3832,tz:"America/Toronto"},
+  {id:"makkah",en:"Makkah",zh:"麦加",sub_en:"Saudi Arabia",sub_zh:"沙特阿拉伯",lat:21.4225,lng:39.8262,tz:"Asia/Riyadh"},
+  {id:"cairo",en:"Cairo",zh:"开罗",sub_en:"Egypt",sub_zh:"埃及",lat:30.0444,lng:31.2357,tz:"Africa/Cairo"}
+];
+
+const METHODS=[
+  {id:"mwl",short:"MWL",name:"Muslim World League",fajr:18,isha:17,
+   desc_en:"Europe · Türkiye · Far East · default for everyone",desc_zh:"欧洲 · 土耳其 · 远东 · 全体用户默认"},
+  {id:"umm",short:"Umm al-Qura",name:"Umm al-Qura University, Makkah",fajr:18.5,interval:90,
+   desc_en:"Saudi Arabia · Gulf · Hajj and Umrah",desc_zh:"沙特 · 海湾地区 · 朝觐与副朝"},
+  {id:"egyptian",short:"Egyptian",name:"Egyptian General Authority of Survey",fajr:19.5,isha:17.5,
+   desc_en:"Egypt · Sudan · Levant · much of Africa",desc_zh:"埃及 · 苏丹 · 黎凡特 · 非洲大部"},
+  {id:"karachi",short:"Karachi",name:"University of Islamic Sciences, Karachi",fajr:18,isha:18,
+   desc_en:"Pakistan · India · Bangladesh · South Asian communities abroad",desc_zh:"巴基斯坦 · 印度 · 孟加拉 · 海外南亚社群"},
+  {id:"isna",short:"ISNA",name:"Islamic Society of North America",fajr:15,isha:15,
+   desc_en:"United States · Canada",desc_zh:"美国 · 加拿大"}
+];
+
+const ASR_OPTS=[
+  {v:1,en:"Standard",zh:"标准",desc_en:"Shafi'i · Maliki · Hanbali — shadow equal to the object",desc_zh:"沙斐仪 · 马立克 · 罕百里 — 阴影 1 倍"},
+  {v:2,en:"Hanafi",zh:"哈乃斐",desc_en:"Shadow twice the object — usually 30–60 minutes later",desc_zh:"阴影 2 倍 — 通常比标准晚 30–60 分钟"}
+];
+
+const RULE_OPTS=[
+  {v:1,en:"Middle of night",zh:"夜晚中点",desc_en:"Night divided equally; Fajr and Isha at the halfway point",desc_zh:"夜晚等分，晨礼与宵礼取中点"},
+  {v:2,en:"One seventh",zh:"夜晚 1/7",desc_en:"Fajr and Isha at one seventh from each end of the night",desc_zh:"夜晚两端各取 1/7"},
+  {v:3,en:"Angle based",zh:"角度法",desc_en:"Uses the angles of the selected method — default",desc_zh:"沿用所选方法的角度 — 默认"}
+];
+
+const PRAYERS=[
+  {k:"Fajr",en:"Fajr",zh:"晨礼"},
+  {k:"Sunrise",en:"Sunrise",zh:"日出"},
+  {k:"Dhuhr",en:"Dhuhr",zh:"午礼"},
+  {k:"Asr",en:"Asr",zh:"晡礼"},
+  {k:"Maghrib",en:"Maghrib",zh:"昏礼"},
+  {k:"Isha",en:"Isha",zh:"宵礼"}
+];
+const ADHAN_KEYS=["Fajr","Dhuhr","Asr","Maghrib","Isha"];
+
+const STR={
+  en:{title:"Prayer Times",next:"Next prayer",inh:"h",inm:"m",tomorrow:"Tomorrow",
+      calc:"Calculation settings",method:"Calculation method",asr:"Asr time",rule:"High-latitude rule",
+      compare:"Compared with the MWL · Standard default",done:"Done",loc:"Location",change:"Change",
+      methodHint:"All five methods are built in. Your selection applies to every day, past and future.",
+      asrHint:"Asr only. Fajr, Dhuhr and Isha are not affected by this setting.",
+      ruleHint:"Only applies when Fajr or Isha cannot be reached at the given angle.",
+      locHint:"Choose a city to see how the settings behave there.",
+      foot:"Times are calculated on your device. Always confirm with your local mosque before praying.",
+      toast:"Times updated"+String.fromCharCode(32)+"·"+String.fromCharCode(32)+"5 reminders rescheduled",
+      at:"at"},
+  zh:{title:"祈祷时间",next:"下一次礼拜",inh:"小时",inm:"分",tomorrow:"明天",
+      calc:"计算设置",method:"计算方法",asr:"晡礼时间",rule:"高纬度规则",
+      compare:"对比基准：MWL · 标准晡礼",done:"完成",loc:"位置",change:"更改",
+      methodHint:"五种方法均为内置。选择后对全部日期生效。",
+      asrHint:"仅影响晡礼。晨礼、午礼、宵礼不受影响。",
+      ruleHint:"仅在给定角度无法到达时生效。",
+      locHint:"选择城市，查看该设置在不同地区表现。",
+      foot:"时间在本机计算。实际礼拜前请以本地清真寺时间为准。",
+      toast:"时间已更新 · 5 个提醒已重新排程",
+      at:""}
+};
+
+/* =========================================================
+   2. astronomy (validated against AlAdhan API, ±1 min)
+   ========================================================= */
+const RAD=Math.PI/180;
+const dsin=d=>Math.sin(d*RAD),dcos=d=>Math.cos(d*RAD);
+const darcsin=x=>Math.asin(x)/RAD,darctan2=(y,x)=>Math.atan2(y,x)/RAD;
+const fixAngle=a=>((a%360)+360)%360,fixHour=a=>((a%24)+24)%24;
+const T={fajr:5/24,sunrise:6/24,dhuhr:12/24,asr:13/24,maghrib:18/24,isha:18/24};
+
+function julian(y,m,d){
+  if(m<=2){y-=1;m+=12;}
+  const A=Math.floor(y/100),B=2-A+Math.floor(A/4);
+  return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5;
+}
+function sunPosition(jd){
+  const D=jd-2451545.0;
+  const g=fixAngle(357.529+0.98560028*D),q=fixAngle(280.459+0.98564736*D);
+  const L=fixAngle(q+1.915*dsin(g)+0.020*dsin(2*g));
+  const e=23.439-0.00000036*D;
+  const RA=darctan2(dcos(e)*dsin(L),dcos(L))/15;
+  let eqt=q/15-fixHour(RA);
+  if(eqt>1)eqt-=24; if(eqt<-1)eqt+=24;
+  return {decl:darcsin(dsin(e)*dsin(L)),eqt};
+}
+function hourAngle(a,lat,decl){
+  const x=(-dsin(a)-dsin(lat)*dsin(decl))/(dcos(lat)*dcos(decl));
+  if(x>1||x<-1)return null;
+  return Math.acos(x)/(15*RAD);
+}
+function tzOffset(tz,y,m,d){
+  const utc=new Date(Date.UTC(y,m-1,d,12,0,0));
+  try{
+    const p=new Intl.DateTimeFormat("en-US",{timeZone:tz,timeZoneName:"longOffset"}).formatToParts(utc);
+    const v=p.find(x=>x.type==="timeZoneName").value;
+    if(v==="GMT")return 0;
+    const mm=v.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
+    if(mm)return (mm[1]==="-"?-1:1)*(parseInt(mm[2])+(mm[3]?parseInt(mm[3])/60:0));
+  }catch(e){}
+  try{
+    const s=utc.toLocaleString("en-US",{timeZone:tz,hour12:false,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    const p=s.match(/(\d{2})\/(\d{2})\/(\d{4}),\s*(\d{1,2}):(\d{2}):(\d{2})/);
+    if(p){let h=parseInt(p[4]);if(h===24)h=0;
+      const local=Date.UTC(+p[3],+p[1]-1,+p[2],h,+p[5],+p[6]);
+      return (local-utc.getTime())/3600000;}
+  }catch(e){}
+  return 0;
+}
+
+function calcTimes(place,y,mo,da,method,school,rule){
+  const tz=tzOffset(place.tz,y,mo,da);
+  const jd=julian(y,mo,da)-place.lng/(15*24);
+  const decl=k=>sunPosition(jd+T[k]).decl;
+  const dhuhr=fixHour(12-sunPosition(jd+T.dhuhr).eqt)+tz-place.lng/15;
+  const hSR=hourAngle(.833,place.lat,decl("sunrise"));
+  const hSS=hourAngle(.833,place.lat,decl("maghrib"));
+  if(hSR===null||hSS===null)return null;
+  const sunrise=dhuhr-hSR, maghrib=dhuhr+hSS;
+
+  const hF=hourAngle(method.fajr,place.lat,decl("fajr"));
+  let fajr=hF===null?null:dhuhr-hF;
+
+  const ishaAngle=method.isha!==undefined?method.isha:18;
+  let isha;
+  if(method.interval!==undefined)isha=maghrib+method.interval/60;
+  else{const hI=hourAngle(method.isha,place.lat,decl("isha"));isha=hI===null?null:dhuhr+hI;}
+
+  const dAsr=decl("asr");
+  const aa=-Math.atan(1/(school+Math.tan(Math.abs(place.lat-dAsr)*RAD)))/RAD;
+  const hA=hourAngle(aa,place.lat,dAsr);
+  const asr=hA===null?null:dhuhr+hA;
+
+  const night=24-(maghrib-sunrise);
+  const r=RULE_OPTS.find(x=>x.v===rule);
+  const pf=r.v===1?.5:(r.v===2?1/7:method.fajr/60);
+  const pi=r.v===1?.5:(r.v===2?1/7:ishaAngle/60);
+  const safeFajr=sunrise-night*pf, safeIsha=maghrib+night*pi;
+  let adjusted=false;
+  if(fajr===null||fajr<safeFajr){fajr=safeFajr;adjusted=true;}
+  if(method.interval===undefined&&(isha===null||isha>safeIsha)){isha=safeIsha;adjusted=true;}
+
+  return {Fajr:fajr,Sunrise:sunrise,Dhuhr:dhuhr,Asr:asr,Maghrib:maghrib,Isha:isha,adjusted};
+}
+
+function fmt(h){
+  if(h===null||h===undefined||Number.isNaN(h))return "--:--";
+  const n=Math.round(fixHour(h)*60)%1440;
+  return String(Math.floor(n/60)).padStart(2,"0")+":"+String(n%60).padStart(2,"0");
+}
+function diffMin(a,b){
+  if(a===null||b===null||Number.isNaN(a)||Number.isNaN(b))return null;
+  let d=fixHour(a)*60-fixHour(b)*60;
+  if(d>720)d-=1440; if(d<-720)d+=1440;
+  return Math.round(d);
+}
+function placeToday(place){
+  const now=new Date();
+  const off=tzOffset(place.tz,now.getFullYear(),now.getMonth()+1,now.getDate());
+  const d=new Date(now.getTime()+off*3600000);
+  return {y:d.getUTCFullYear(),mo:d.getUTCMonth()+1,da:d.getUTCDate(),
+          h:d.getUTCHours()+d.getUTCMinutes()/60};
+}
+
+/* =========================================================
+   3. state + render
+   ========================================================= */
+let lang="en";
+let state={cityId:"karachi",method:"mwl",asr:1,rule:3};
+let sheetKind=null;
+let lastShown={};
+
+const $=id=>document.getElementById(id);
+const t=k=>STR[lang][k];
+const city=()=>CITIES.find(c=>c.id===state.cityId);
+const method=()=>METHODS.find(m=>m.id===state.method);
+const cname=c=>lang==="zh"?c.zh:c.en;
+const csub=c=>lang==="zh"?c.sub_zh:c.sub_en;
+
+function angleLabel(m){
+  return m.interval!==undefined ? `Fajr ${m.fajr}° · Isha ${m.interval} min` : `Fajr ${m.fajr}° · Isha ${m.isha}°`;
+}
+
+function currentResult(){
+  const p=city(), d=placeToday(p);
+  const m=method();
+  const r=calcTimes(p,d.y,d.mo,d.da,m,state.asr,state.rule);
+  return {place:p,date:d,res:r};
+}
+function baselineResult(){
+  const p=city(), d=placeToday(p);
+  return calcTimes(p,d.y,d.mo,d.da,METHODS[0],1,3);
+}
+
+const ICONS={
+  Fajr:'<path d="M12 4.4a5.4 5.4 0 1 0 0 10.6 6.7 6.7 0 0 1 0-10.6Z"/><circle cx="18" cy="6" r="1.1" fill="currentColor" stroke="none"/>',
+  Sunrise:'<path d="M4 18h16M7.5 18a4.5 4.5 0 0 1 9 0M12 12.6V6m0 0L9.6 8.4M12 6l2.4 2.4"/>',
+  Dhuhr:'<circle cx="12" cy="12" r="3.7"/><path d="M12 3.4v2M12 18.6v2M3.4 12h2M18.6 12h2M6.2 6.2l1.4 1.4M16.4 16.4l1.4 1.4M17.8 6.2l-1.4 1.4M7.6 16.4l-1.4 1.4"/>',
+  Asr:'<circle cx="12" cy="12" r="3.7"/><path d="M3.4 12h2M18.6 12h2M12 3.4v2M6.2 6.2l1.4 1.4M16.4 16.4l1.4 1.4"/>',
+  Maghrib:'<path d="M4 18h16M7.5 18a4.5 4.5 0 0 1 9 0M12 6v6.4m0 0-2.4-2.4M12 12.4l2.4-2.4"/>',
+  Isha:'<path d="M13.6 4.4a6.2 6.2 0 1 0 0 11.6 7.5 7.5 0 0 1 0-11.6Z"/>'
+};
+function icon(k){
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[k]||"")+'</svg>';
+}
+
+function nextPrayer(res,nowH){
+  let best=null;
+  for(const k of ADHAN_KEYS){
+    const v=res[k];
+    if(v===null||v===undefined)continue;
+    const h=fixHour(v);
+    if(h>nowH+0.0001){best={k,h,delta:h-nowH};break;}
+  }
+  if(!best){
+    const f=res.Fajr;
+    if(f!==null&&f!==undefined){const h=fixHour(f)+24;best={k:"Fajr",h,delta:h-nowH,tomorrow:true};}
+  }
+  return best;
+}
+
+function render(){
+  const cur=currentResult(), base=baselineResult();
+  const {place,date,res}=cur;
+  const lang_=lang;
+  const pname=k=>{const p=PRAYERS.find(x=>x.k===k);return lang_==="zh"?p.zh:p.en;};
+
+  const pOther=k=>{const p=PRAYERS.find(x=>x.k===k);return lang_==="zh"?p.en:p.zh;};
+  const np=res?nextPrayer(res,date.h):null;
+  const npName=np?pname(np.k):"—";
+  const npTime=np?fmt(np.h):"--:--";
+  let leftTxt="";
+  if(np){
+    const mins=Math.max(0,Math.round(np.delta*60));
+    if(mins>=60){
+      const hh=Math.floor(mins/60),mm=mins%60;
+      leftTxt=lang_==="zh"?`还有 ${hh} 小时 ${mm} 分`:`in ${hh}${t("inh")} ${mm}${t("inm")}`;
+    }else{
+      leftTxt=lang_==="zh"?`还有 ${mins} 分`:`in ${mins}${t("inm")}`;
+    }
+  }
+
+  const dd=new Date();
+  const greg=lang_==="zh"
+    ? new Intl.DateTimeFormat("zh-CN",{weekday:"short"}).format(dd)+" "+new Intl.DateTimeFormat("zh-CN",{month:"long",day:"numeric"}).format(dd)
+    : new Intl.DateTimeFormat("en-GB",{weekday:"short",day:"numeric",month:"short"}).format(dd);
+  let hijri="";
+  try{
+    hijri=new Intl.DateTimeFormat("en-u-ca-islamic-umalqura",{day:"numeric",month:"long",year:"numeric"}).format(new Date());
+    hijri=hijri.replace(/\s*AH$/," AH");
+  }catch(e){hijri="";}
+
+  /* ---- rows ---- */
+  let rows="";
+  for(const p of PRAYERS){
+    const v=res?res[p.k]:null;
+    const isNext=np&&np.k===p.k&&!np.tomorrow;
+    let deltaTxt="",dc="";
+    if(base&&res&&["Fajr","Asr","Isha"].includes(p.k)){
+      const d=diffMin(v,base[p.k]);
+      if(d===null)deltaTxt="";
+      else if(d===0)deltaTxt="±0";
+      else{deltaTxt=(d>0?"+":"")+d;dc=d>0?" up":" down";}
+    }
+    const shown=fmt(v);
+    rows+=`<div class="prow${isNext?" is-next":""}">
+      <span class="pico">${icon(p.k)}</span>
+      <span class="pname">${pname(p.k)}</span>
+      <span class="ptime" data-k="${p.k}">${shown}</span>
+      <span class="pdelta${dc}">${deltaTxt}</span>
+    </div>`;
+  }
+
+  const locItems=CITIES.map(c=>`<div class="lmi${c.id===state.cityId?" sel":""}" data-city="${c.id}">
+      <span class="n">${c.en}<small>${c.sub_en}</small></span>
+      <span class="tick">${CK}</span>
+    </div>`).join("");
+
+  const m=method();
+  const asrOpt=ASR_OPTS.find(x=>x.v===state.asr);
+  const ruleOpt=RULE_OPTS.find(x=>x.v===state.rule);
+  const asrName=lang_==="zh"?asrOpt.zh:asrOpt.en;
+  const ruleName=lang_==="zh"?ruleOpt.zh:ruleOpt.en;
+
+  $("screen").innerHTML=`
+    <div class="hero-wrap">
+    <div class="hero">
+      <div class="hero-top">
+        <div class="loc" id="btnLoc">
+          <b>${cname(place)}</b>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="dates">
+          <div class="hijri">${hijri}</div>
+          <div class="greg">${greg}</div>
+        </div>
+      </div>
+      <div class="next">
+        <div class="next-l">
+          <div class="cap">${t("next")}</div>
+          <div class="nm">${npName}</div>
+        </div>
+        <div class="next-r">
+          <div class="tm">${npTime}</div>
+          <div class="left">${leftTxt}</div>
+        </div>
+      </div>
+    </div>
+    <div class="loc-menu" id="locMenu">${locItems}</div>
+    </div>
+
+    <div class="pcard">${rows}</div>
+    <div class="cmp"><i></i>${t("compare")}</div>
+
+    <div class="gtitle">${t("calc")}</div>
+    <div class="group">
+      <div class="srow" data-sheet="method">
+        <div class="label">${t("method")}<small>${angleLabel(m)}</small></div>
+        <div class="val">${m.short}</div>
+        <div class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      </div>
+      <div class="srow" data-sheet="asr">
+        <div class="label">${t("asr")}</div>
+        <div class="val">${asrName}</div>
+        <div class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      </div>
+      <div class="srow" data-sheet="rule">
+        <div class="label">${t("rule")}</div>
+        <div class="val">${ruleName}</div>
+        <div class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      </div>
+    </div>
+
+    <div class="foot">${t("foot")}</div>
+  `;
+
+  /* click bindings */
+  $("btnLoc").onclick=toggleLocMenu;
+  $("locMenu").querySelectorAll("[data-city]").forEach(el=>{
+    el.onclick=()=>{
+      if(state.cityId!==el.dataset.city){
+        state.cityId=el.dataset.city;
+        render();
+        toast();
+      }else{
+        closeLocMenu();
+      }
+    };
+  });
+  document.querySelectorAll(".srow").forEach(el=>{
+    el.onclick=()=>openSheet(el.dataset.sheet);
+  });
+
+  flashChanged();
+  if(sheetKind)renderSheet();
+}
+
+function flashChanged(){
+  const now={};
+  document.querySelectorAll(".ptime").forEach(el=>{now[el.dataset.k]=el.textContent;});
+  document.querySelectorAll(".ptime").forEach(el=>{
+    const k=el.dataset.k;
+    if(lastShown[k]!==undefined&&lastShown[k]!==now[k]){
+      el.classList.remove("flash");
+      void el.offsetWidth;
+      el.classList.add("flash");
+    }
+  });
+  lastShown=now;
+}
+
+/* =========================================================
+   4. sheets
+   ========================================================= */
+function openSheet(kind){
+  sheetKind=kind;
+  renderSheet();
+  $("scrim").classList.add("on");
+  $("sheet").classList.add("on");
+  $("screen").classList.add("locked");
+}
+function closeSheet(){
+  sheetKind=null;
+  $("scrim").classList.remove("on");
+  $("sheet").classList.remove("on");
+  $("screen").classList.remove("locked");
+}
+
+const CK='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.2 5.2L20 6.8"/></svg>';
+
+function renderSheet(){
+  const box=$("sheet");
+  const k=sheetKind;
+  let head="",body="";
+
+  if(k==="method"){
+    head=`<h2>${t("method")}</h2><p>${t("methodHint")}</p>`;
+    body=METHODS.map(m=>`<div class="opt${m.id===state.method?" sel":""}" data-pick="m|${m.id}">
+      <div class="ot">
+        <div class="on">${m.name}</div>
+        <div class="od"><span class="ang">${angleLabel(m)}</span>${lang==="zh"?m.desc_zh:m.desc_en}</div>
+      </div>
+      <span class="ck">${CK}</span>
+    </div>`).join("");
+  }
+  if(k==="asr"){
+    head=`<h2>${t("asr")}</h2><p>${t("asrHint")}</p>`;
+    body=ASR_OPTS.map(a=>`<div class="opt${a.v===state.asr?" sel":""}" data-pick="a|${a.v}">
+      <div class="ot">
+        <div class="on">${lang==="zh"?a.zh:a.en}${lang==="zh"?'<span style="color:#8C9992;font-weight:400;font-size:12px;margin-left:6px">'+a.en+'</span>':''}</div>
+        <div class="od">${lang==="zh"?a.desc_zh:a.desc_en}</div>
+      </div>
+      <span class="ck">${CK}</span>
+    </div>`).join("");
+  }
+  if(k==="rule"){
+    head=`<h2>${t("rule")}</h2><p>${t("ruleHint")}</p>`;
+    body=RULE_OPTS.map(r=>`<div class="opt${r.v===state.rule?" sel":""}" data-pick="r|${r.v}">
+      <div class="ot">
+        <div class="on">${lang==="zh"?r.zh:r.en}${lang==="zh"?'<span style="color:#8C9992;font-weight:400;font-size:12px;margin-left:6px">'+r.en+'</span>':''}</div>
+        <div class="od">${lang==="zh"?r.desc_zh:r.desc_en}</div>
+      </div>
+      <span class="ck">${CK}</span>
+    </div>`).join("");
+  }
+
+  box.innerHTML=`<div class="grab"></div><header>${head}</header><div class="body">${body}</div><button class="done" id="btnDone">${t("done")}</button>`;
+
+  box.querySelectorAll("[data-pick]").forEach(el=>{
+    el.onclick=()=>{
+      const [type,v]=el.dataset.pick.split("|");
+      if(type==="m")state.method=v;
+      if(type==="a")state.asr=+v;
+      if(type==="r")state.rule=+v;
+      render();
+      renderSheet();toast();
+    };
+  });
+  $("btnDone").onclick=closeSheet;
+}
+
+let toastTimer=null;
+function toast(){
+  const el=$("toast");
+  el.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.2 5.2L20 6.8"/></svg>'+t("toast");
+  el.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove("on"),2200);
+}
+
+/* =========================================================
+   5. wiring
+   ========================================================= */
+function openLocMenu(){
+  const m=$("locMenu"),b=$("btnLoc");
+  if(!m)return;
+  m.classList.add("on");
+  b.classList.add("open");
+}
+function closeLocMenu(){
+  const m=$("locMenu"),b=$("btnLoc");
+  if(m)m.classList.remove("on");
+  if(b)b.classList.remove("open");
+}
+function toggleLocMenu(){
+  const m=$("locMenu");
+  if(!m)return;
+  m.classList.contains("on")?closeLocMenu():openLocMenu();
+}
+document.addEventListener("click",e=>{
+  if(!e.target.closest("#btnLoc")&&!e.target.closest("#locMenu"))closeLocMenu();
+});
+
+$("scrim").onclick=closeSheet;
+$("btnBack").onclick=()=>{ if(sheetKind){closeSheet();} };
+function tick(){
+  const d=new Date();
+  $("clock").textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
+tick();setInterval(tick,20000);
+
+/* first paint */
+$("navTitle").textContent=t("title");
+render();
+
+/* keep the fixed-size device mockup fully inside the viewport */
+const PHONE_W=410, PHONE_H=864;
+function fitDevice(){
+  const s=Math.min(1,(window.innerHeight-48)/PHONE_H,(window.innerWidth-36)/PHONE_W);
+  document.documentElement.style.setProperty("--fit-s",Math.max(.35,s).toFixed(4));
+}
+let fitT=null;
+window.addEventListener("resize",()=>{clearTimeout(fitT);fitT=setTimeout(fitDevice,50);});
+fitDevice();
+</script>
+</body>
+</html>
